@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 awedio = "0.3.1"
 raylib = "3.7.0"
+num-complex = "0.4.5"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
