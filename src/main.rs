@@ -48,9 +48,7 @@ fn main() {
                 //drawings.push_back(sample.into());
                 drawings.remove(0);
                 drawings.push(sample.into());
-                let frequency_domain_vector = real_fft(drawings.clone());
-                let scalefactor = 4;
-                newdomain = increase_resolution(frequency_domain_vector, scalefactor);
+                drawings = real_fft_filter(drawings.clone());
             }
 
 
@@ -86,10 +84,10 @@ fn main() {
             // Plot the points
             let mut prevx = 0;
             let mut prevy = 0;
-            for (i, sample) in newdomain.iter().enumerate() {
-                let x = sample[0] as f32 * width as f32; // Convert to f32 for accurate positioning
+            for (i, sample) in drawings.iter().enumerate() {
+                let x = i as f32 * width as f32; // Convert to f32 for accurate positioning
                 let y = screen_height / 2; // Convert sample to f32 for y-coordinate
-                let height = sample[1].clone() as i32 / 20;
+                let height = sample.clone() as i32 / 50;
 
                 // Plot points at (x, y) with the specified color
                 //drawing.draw_circle(x as i32, y as i32 +height, point_size, Color::WHITE);
@@ -160,26 +158,7 @@ fn ifft(arr: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
     return ans;
 }
 
-fn increase_resolution(arr:Vec<Complex<f64>>, scalefactor:i32) -> Vec<Vec<f64>> {
-    if scalefactor%2 != 0 {
-        panic!("The scale factor should be a power of 2")
-    }
 
-    let mut ans: Vec<Vec<f64>> = vec![];
-    let mut temp: Vec<Complex<f64>> = vec![];
-    for j in 0..arr.len() {
-        temp.push(arr[j]);
-        for i in 0..scalefactor-1 {
-            temp.push(Complex::new(0.0, 0.0));
-        }
-    }
-    temp = ifft(temp);
-    for j in 0..temp.len() {
-        let mut temp2: Vec<f64> = vec![j as f64 /scalefactor as f64, 0.0];
-        temp2[1] = temp[j].re;
-        ans.push(temp2);
-    }
-    return ans;}
 
 //   fn increaes_resolution(amplitude: Vec<f64>, phase: Vec<f64>, newsize:i32) -> Vec<Vec<f64>> {
 //       if phase.len() != amplitude.len() {
@@ -200,12 +179,34 @@ fn increase_resolution(arr:Vec<Complex<f64>>, scalefactor:i32) -> Vec<Vec<f64>> 
 //
 //       return ans;
 //   }
-fn real_fft(arr:Vec<f64>) -> Vec<Complex<f64>> {
+fn real_fft_filter(arr:Vec<f64>) -> Vec<f64> {
     let n = arr.len();
     let mut ans: Vec<Complex<f64>> = vec![];
     for i in 0..n {
         ans.push(Complex::new(arr[i], 0.0));
     }
-    return fft(ans);
+    return fftfilter(ans, 0.0, 0.9);
+}
+fn fftfilter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
+
+    let n = arr.len();
+    arr = fft(arr);
+    let mut filter: Vec<Complex<f64>> = vec![];
+
+    for i in 0..n {
+        let freq = i as f64 / n as f64;
+        if freq >= low && freq <= high {
+            filter.push(arr[i]);
+        } else {
+            filter.push(Complex::new(0.0, 0.0));
+        }
+    }
+    filter = ifft(filter);
+    let mut ans: Vec<f64> = vec![];
+    for i in 0..n {
+        ans.push(filter[i].re());
+    }
+    return ans;
+
 }
 
