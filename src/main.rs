@@ -1,4 +1,3 @@
-//use std::collections::VecDeque;
 use raylib::prelude::*;
 use awedio::Sound;
 use std::f64::consts::{E, PI};
@@ -6,22 +5,23 @@ use std::ops::{Div, Mul};
 use num_complex::{Complex, ComplexFloat};
 
 const I:Complex<f64> = Complex::new(0.0, -2.0*PI);
+
 fn main() {
-    // initialize ray lib and awed io
+    // initialize ray lib and awedio
     let (mut handle, thread) = init().build();
     // init raylib music
     let mut audio = RaylibAudio::init_audio_device();
     let mut music = Music::load_music_stream(&thread, "src/interconnectedness.ogg").unwrap();
     RaylibAudio::play_music_stream(&mut audio, &mut music);
     // load sound for samples
-    let mut samples = awedio::sounds::open_file("src/interconnectedness.ogg")
-        .unwrap();
+    let mut samples = awedio::sounds::open_file("src/interconnectedness.ogg").unwrap();
 
     // initialize variables
     let mut is_paused: bool = false;
     let sample_rate: u32 = samples.sample_rate();
-    let frame_size: i32 = 256;//has to be a power of 2 for fft to work
-    let width: i32 = handle.get_screen_width() / (frame_size-46);//optimization for the width of the line 46 is just a random number
+    let frame_size: i32 = 256; // must be power of 2
+    // optimization for the width of the line 46 is just a random number
+    let width: i32 = handle.get_screen_width() / (frame_size-46);
     let screen_height: i32 = handle.get_screen_height();
     let mut drawings: Vec<f64> = Vec::new();
     for _ in 0..frame_size {
@@ -30,61 +30,56 @@ fn main() {
     let update_time: u64 = (1000 / sample_rate) as u64;
     let mut updates: u64 = 1;
 
-    unsafe {
-        while !handle.window_should_close() {
-            // every update_time, update drawings with new sample
-            RaylibAudio::update_music_stream(&mut audio, &mut music);
-            let time_played = RaylibAudio::get_music_time_played(&audio, &music);
-            if !is_paused && (time_played * 1024.0) as u64 > update_time * updates {
-                updates += 1;
-                let next_frame = samples.next_frame().unwrap();
-                let mut sample = next_frame[0];
-                if (sample as i32).abs() < 1024 {
-                    sample = 0;
-                }
-                //drawings.pop_front();
-                //drawings.push_back(sample.into());
-                drawings.remove(0);
-                drawings.push(sample.into());
-                drawings = real_fft_filter(drawings.clone(), 0.01, 0.9);//filter out the noise
+    while !handle.window_should_close() {
+        // every update_time, update drawings with new sample
+        RaylibAudio::update_music_stream(&mut audio, &mut music);
+        let time_played = RaylibAudio::get_music_time_played(&audio, &music);
+        if !is_paused && (time_played * 1024.0) as u64 > update_time * updates {
+            updates += 1;
+            let next_frame = samples.next_frame().unwrap();
+            let mut sample = next_frame[0];
+            if (sample as i32).abs() < 1024 {
+                sample = 0;
             }
+            drawings.remove(0);
+            drawings.push(sample.into());
 
+            // filter out noise
+            drawings = real_fft_filter(drawings.clone(), 0.01, 0.9);         
+        }
 
-
-
-            // handle pausing
-            if handle.is_key_pressed(KeyboardKey::KEY_SPACE) {
-                if is_paused {
-                    RaylibAudio::play_music_stream(&mut audio, &mut music);
-                    is_paused = false;
-                } else {
-                    RaylibAudio::pause_music_stream(&mut audio, &mut music);
-                    is_paused = true;
-                }
-            }
-
-            let mut drawing: RaylibDrawHandle = handle.begin_drawing(&thread);
-            RaylibDraw::clear_background(&mut drawing, Color::DARKGRAY);
-
-// Define the size of the points to be plotted
-            // Plot the points
-            let mut prevx = 0.0;
-            let mut prevy = 0.0;
-            for (i, sample) in drawings.iter().enumerate() {
-                let x = i as f32 * width as f32; // Convert to f32 for accurate positioning
-                let y = screen_height / 2; // Convert sample to f32 for y-coordinate
-                let height = sample.clone() as f32 / 50.0;
-
-                // Plot points at (x, y) with the specified color
-                drawing.draw_line(prevx as i32, prevy as i32, x as i32, y + height as i32, Color::WHITE);
-
-                prevx = x;
-                prevy = y as f32 + height;
+        // handle pausing
+        if handle.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            if is_paused {
+                RaylibAudio::play_music_stream(&mut audio, &mut music);
+                is_paused = false;
+            } else {
+                RaylibAudio::pause_music_stream(&mut audio, &mut music);
+                is_paused = true;
             }
         }
+
+        let mut drawing: RaylibDrawHandle = handle.begin_drawing(&thread);
+        RaylibDraw::clear_background(&mut drawing, Color::DARKGRAY);
+
+        // define the size of the points to be plotted
+        // plot the points
+        let mut prevx = 0.0;
+        let mut prevy = 0.0;
+        for (i, sample) in drawings.iter().enumerate() {
+            let x = i as f32 * width as f32; 
+            let y = screen_height / 2; 
+            let height = sample.clone() as f32 / 50.0;
+
+            // plot points at (x, y) with the specified color
+            drawing.draw_line(prevx as i32, prevy as i32, x as i32, y + height as i32, Color::WHITE);
+            prevx = x;
+            prevy = y as f32 + height;
+        }
+    }
     }
 }
-///
+
 /// The function can only take input with length of powers of 2
 /// It will return a list of complex numbers as the result of Fast Fourier Transform
 /// It provides you with amplitude and phase
@@ -124,10 +119,8 @@ fn fft(arr: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
     return ans
 }
 
-///
 /// This is the inverse function of Fast Fourier Transform
-///it transforms the frequency domain back to the real domain
-///
+/// It transforms the frequency domain back to the real domain
 fn ifft(arr: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
     let mut ans : Vec<Complex<f64>> = vec![];
     let n = arr.len();
@@ -141,9 +134,6 @@ fn ifft(arr: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
     return ans;
 }
 
-
-
-
 fn real_fft_filter(arr:Vec<f64>, low:f64, high:f64) -> Vec<f64> {
     let n = arr.len();
     let mut ans: Vec<Complex<f64>> = vec![];
@@ -152,8 +142,8 @@ fn real_fft_filter(arr:Vec<f64>, low:f64, high:f64) -> Vec<f64> {
     }
     return filter(ans, low, high);
 }
-fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
 
+fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
     let n = arr.len();
     arr = fft(arr);
     let mut filter: Vec<Complex<f64>> = vec![];
@@ -172,6 +162,4 @@ fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
         ans.push(filter[i].re());
     }
     return ans;
-
 }
-
