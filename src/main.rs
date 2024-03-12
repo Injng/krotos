@@ -77,7 +77,6 @@ fn main() {
             prevy = y as f32 + height;
         }
     }
-    }
 }
 
 /// The function can only take input with length of powers of 2
