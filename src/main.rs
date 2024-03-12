@@ -20,8 +20,8 @@ fn main() {
     // initialize variables
     let mut is_paused: bool = false;
     let sample_rate: u32 = samples.sample_rate();
-    let frame_size: i32 = 256;//has to be a power of 2 for fft to work
-    let width: i32 = handle.get_screen_width() / (frame_size-46);//optimization for the width of the line 46 is just a random number
+    let frame_size: i32 = 512;//has to be a power of 2 for fft to work
+    let width: i32 = handle.get_screen_width() / (frame_size-192);//optimization for the width of the line 46 is just a random number
     let screen_height: i32 = handle.get_screen_height();
     let mut drawings: Vec<f64> = Vec::new();
     for _ in 0..frame_size {
@@ -150,9 +150,9 @@ fn real_fft_filter(arr:Vec<f64>, low:f64, high:f64) -> Vec<f64> {
     for i in 0..n {
         ans.push(Complex::new(arr[i], 0.0));
     }
-    return filter(ans, low, high);
+    return filter(ans, low, high, 5.0);
 }
-fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
+fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64, mag1: f64) -> Vec<f64> {
 
     let n = arr.len();
     arr = fft(arr);
@@ -160,10 +160,10 @@ fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64) -> Vec<f64> {
 
     for i in 0..n {
         let freq = i as f64 / n as f64;
-        if freq >= low && freq <= high {
-            filter.push(arr[i]);
-        } else {
+        if arr[i].re().abs() + arr[i].im().abs() < mag1 ||(freq < low && freq > high) {
             filter.push(Complex::new(0.0, 0.0));
+        } else {
+            filter.push(arr[i])
         }
     }
     filter = ifft(filter);
