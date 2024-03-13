@@ -46,7 +46,7 @@ fn main() {
                 //drawings.push_back(sample.into());
                 drawings.remove(0);
                 drawings.push(sample.into());
-                drawings = real_fft_filter(drawings.clone(), 0.01, 0.9);//filter out the noise
+                drawings = real_fft_filter(drawings.clone(), 0.01, 3.14, 0.1);//filter out the noise
             }
 
 
@@ -70,16 +70,36 @@ fn main() {
             // Plot the points
             let mut prevx = 0.0;
             let mut prevy = 0.0;
-            for (i, sample) in drawings.iter().enumerate() {
+
+            let mut prevmidx = 0.0;
+            let mut prevmidy = 0.0;
+
+         //  for (i, sample) in drawings.iter().enumerate() {
+         //          print!("{} ", prevmidx);
+         //          let x = i as f32 * width as f32; // Convert to f32 for accurate positioning
+         //          let y = screen_height / 2; // Convert sample to f32 for y-coordinate
+         //          let height = sample.clone() as f32 / 50.0;
+         //          // Plot points at (x, y) with the specified color
+         //          drawing.draw_line(prevx as i32, prevy as i32, x as i32, y + height as i32, Color::WHITE);
+         //      prevx = x;
+         //      prevy = y as f32 + height;
+         //      ; // Convert sample to f32 for y-coordinate
+         //   }
+            for i in 0..drawings.len()-2{
                 let x = i as f32 * width as f32; // Convert to f32 for accurate positioning
                 let y = screen_height / 2; // Convert sample to f32 for y-coordinate
-                let height = sample.clone() as f32 / 50.0;
-
+                let height0 = drawings[i] as f32 / 50.0;
+                let height1 = drawings[i+1] as f32 / 50.0;
+                let height2 = drawings[i+2] as f32 / 50.0;
                 // Plot points at (x, y) with the specified color
-                drawing.draw_line(prevx as i32, prevy as i32, x as i32, y + height as i32, Color::WHITE);
-
-                prevx = x;
-                prevy = y as f32 + height;
+                for t in 0..=100{
+                    let t = t as f32 / 100.0;
+                    let p0 = Vector2::new(x, y as f32+ height0);
+                    let p1 = Vector2::new(x +width as f32, y as f32+ height1);
+                    let p2 = Vector2::new(x+width as f32 *2.0, y as f32+ height2);
+                    let p = quadratic_bezier(p0, p1, p2, t);
+                    drawing.draw_pixel(p.x as i32, p.y as i32, Color::WHITE);
+                }
             }
         }
     }
@@ -142,15 +162,26 @@ fn ifft(arr: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
 }
 
 
+// Quadratic bezier curve interpolation
+fn quadratic_bezier(p0: Vector2, p1: Vector2, p2: Vector2, t: f32) -> Vector2 {
+    let u = 1.0 - t;
+    let u_squared = u * u;
+    let t_squared = t * t;
 
+    // Component-wise multiplication and addition
+    let x = u_squared * p0.x + 2.0 * u * t * p1.x + t_squared * p2.x;
+    let y = u_squared * p0.y + 2.0 * u * t * p1.y + t_squared * p2.y;
 
-fn real_fft_filter(arr:Vec<f64>, low:f64, high:f64) -> Vec<f64> {
+    Vector2::new(x, y)
+}
+
+fn real_fft_filter(arr:Vec<f64>, low:f64, high:f64, mag:f64) -> Vec<f64> {
     let n = arr.len();
     let mut ans: Vec<Complex<f64>> = vec![];
     for i in 0..n {
         ans.push(Complex::new(arr[i], 0.0));
     }
-    return filter(ans, low, high, 5.0);
+    return filter(ans, low, high, mag);
 }
 fn filter(mut arr: Vec<Complex<f64>>, low: f64, high: f64, mag1: f64) -> Vec<f64> {
 
